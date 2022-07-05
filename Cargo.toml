@@ -1,0 +1,10 @@
+[package]
+name = "beady"
+version = "0.0.2"
+edition = "2021"
+description = "Catch2 inspired BDD-style tests"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
