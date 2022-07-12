@@ -22,17 +22,15 @@ fn pushing_an_element_to_a_vec() {
             #[then(the_vec_should_have_one_element)] {
                 assert_eq!(vec.len(), 1);
                 
-                #[and_then(that_element_should_be_the_pushed_value)] {
-                    assert_eq!(vec[0], 7);
-                }
+                #[and_then(that_element_should_be_the_pushed_value)]
+                assert_eq!(vec[0], 7);
             }
             
             #[and_when(the_vec_is_cleared)] {
                 vec.clear();
                 
-                #[then(the_vec_should_be_empty)] {
-                    assert!(vec.is_empty());
-                }
+                #[then(the_vec_should_be_empty)]
+                assert!(vec.is_empty());
             }
         }
     }

@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use std::fmt::{Display, Formatter};
 use syn::{
-    parse_macro_input, parse_quote, spanned::Spanned, Attribute, Block, Error, Expr, ExprBlock,
+    parse_macro_input, parse_quote, spanned::Spanned, Attribute, Block, Error, Expr,
     Ident, ItemFn, Stmt,
 };
 
@@ -57,8 +57,8 @@ impl Display for Section {
     }
 }
 
-fn get_section(block: &ExprBlock) -> Option<Result<Section, Error>> {
-    for attribute in &block.attrs {
+fn get_section(attributes: &Vec<Attribute>) -> Option<Result<Section, Error>> {
+    for attribute in attributes {
         let section_type = if attribute.path.is_ident("given") {
             Some(SectionType::Given)
         } else if attribute.path.is_ident("when") {
@@ -97,7 +97,7 @@ fn given(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream,
     for statement in block.stmts {
         match statement {
             Stmt::Expr(Expr::Block(ref block)) => {
-                let section = get_section(block);
+                let section = get_section(&block.attrs);
 
                 match section {
                     Some(section) => {
@@ -153,7 +153,7 @@ fn when(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
 
     for statement in block.stmts {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
                 Some(section) => {
                     let section = section?;
                     let block = block.block.clone();
@@ -177,6 +177,30 @@ fn when(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
                     context.test_body.push(statement);
                 }
             },
+            Stmt::Semi(Expr::Macro(ref mac, ), _) => {
+                match get_section(&mac.attrs) {
+                    Some(section) => {
+                        let section = section?;
+
+                        if ! matches!(section.section_type, SectionType::Then) {
+                            return Err(Error::new(
+                                section.attribute.path.span(),
+                                "Only \"then\" or \"and_when\" are allowed inside \"when\" section",
+                            ));
+                        }
+
+                        let mac = mac.mac.clone();
+                        let block = parse_quote! {
+                            { #mac }
+                        };
+
+                        thens.push(then(context.with_section(section), block)?);
+                    }
+                    None => {
+                        context.test_body.push(statement);
+                    }
+                }
+            }
             statement => context.test_body.push(statement),
         }
     }
@@ -205,7 +229,7 @@ fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
 
     for statement in block.stmts {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
                 Some(section) => {
                     let section = section?;
                     let block = block.block.clone();
@@ -226,6 +250,30 @@ fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
                     context.test_body.push(statement);
                 }
             },
+            Stmt::Semi(Expr::Macro(ref mac, ), _) => {
+                match get_section(&mac.attrs) {
+                    Some(section) => {
+                        let section = section?;
+
+                        if ! matches!(section.section_type, SectionType::AndThen) {
+                            return Err(Error::new(
+                                section.attribute.path.span(),
+                                "Only \"and_then\" is allowed inside \"then\" section",
+                            ));
+                        }
+
+                        let mac = mac.mac.clone();
+                        let block = parse_quote! {
+                            { #mac }
+                        };
+
+                        thens.push(then(context.with_section(section), block)?);
+                    }
+                    None => {
+                        context.test_body.push(statement);
+                    }
+                }
+            }
             statement => {
                 context.test_body.push(statement);
             }
@@ -283,7 +331,7 @@ pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for statement in function.block.stmts {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
                 Some(Ok(section)) => match section.section_type {
                     SectionType::Given => {
                         match given(context.with_section(section), block.block.clone()) {

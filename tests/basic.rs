@@ -67,9 +67,7 @@ fn pushing_an_element_to_a_vec() {
                 assert_eq!(vec.len(), 1);
 
                 #[and_then(the_element_should_be_the_pushed_value)]
-                {
-                    assert_eq!(vec[0], 7);
-                }
+                assert_eq!(vec[0], 7);
             }
 
             #[and_when(the_vec_is_cleared)]
@@ -77,9 +75,25 @@ fn pushing_an_element_to_a_vec() {
                 vec.clear();
 
                 #[then(the_vec_should_be_empty)]
-                {
-                    assert!(vec.is_empty());
-                }
+                assert!(vec.is_empty());
+            }
+        }
+    }
+}
+
+#[scenario]
+fn then_section_is_allowed_to_be_a_single_statement() {
+    #[given(a_then_section_consisting_of_a_single_statement)]
+    {
+        #[when(that_section_is_parsed)]
+        {
+            #[then(it_should_be_valid)]
+            assert!(true);
+
+            #[then(one_more_thing)]
+            {
+                #[and_then(it_should_be_allowed_for_and_then_as_well)]
+                assert!(true);
             }
         }
     }
