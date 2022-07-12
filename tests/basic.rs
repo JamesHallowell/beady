@@ -1,5 +1,7 @@
+use beady::scenario;
+
 // The example from Catch2 translated to Rust.
-#[beady::scenario]
+#[scenario]
 fn vector_can_be_sized_and_resized() {
     #[given(an_empty_vector)]
     {
@@ -17,7 +19,7 @@ fn vector_can_be_sized_and_resized() {
     }
 }
 
-#[beady::scenario]
+#[scenario]
 fn nested() {
     #[given(a)]
     {
@@ -50,26 +52,32 @@ fn nested() {
     }
 }
 
-#[beady::scenario]
+#[scenario]
 fn pushing_an_element_to_a_vec() {
-    #[given(an_empty_vec)] {
+    #[given(an_empty_vec)]
+    {
         let mut vec = vec![];
 
-        #[when(an_element_is_pushed_to_the_vec)] {
+        #[when(an_element_is_pushed_to_the_vec)]
+        {
             vec.push(7);
 
-            #[then(the_vec_should_have_one_element)] {
+            #[then(the_vec_should_have_one_element)]
+            {
                 assert_eq!(vec.len(), 1);
 
-                #[and_then(the_element_should_be_the_pushed_value)] {
+                #[and_then(the_element_should_be_the_pushed_value)]
+                {
                     assert_eq!(vec[0], 7);
                 }
             }
 
-            #[and_when(the_vec_is_cleared)] {
+            #[and_when(the_vec_is_cleared)]
+            {
                 vec.clear();
 
-                #[then(the_vec_should_be_empty)] {
+                #[then(the_vec_should_be_empty)]
+                {
                     assert!(vec.is_empty());
                 }
             }

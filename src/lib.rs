@@ -245,16 +245,21 @@ fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
         |str, section| format!("{}{}\n", str, section),
     );
 
-    let scenario = format!("{}\n{}{}", "-".repeat(80), given_when_then, "-".repeat(80));
-
     Ok(quote! {
         #(#attributes)*
         #asyncness fn #ident() {
-            println!("{}", #scenario);
+            println!("\n{}", #given_when_then);
             #(#test_body)*
         }
 
-        #(#thens)*
+        mod #ident {
+            use super::*;
+
+            mod and {
+                use super::*;
+                #(#thens)*
+            }
+        }
     })
 }
 

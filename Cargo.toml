@@ -1,6 +1,6 @@
 [package]
 name = "beady"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "A macro for writing tests in a Behaviour Driven (BD) style."
 license = "MIT OR Apache-2.0"
