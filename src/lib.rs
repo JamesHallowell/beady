@@ -362,7 +362,6 @@ pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let scenario = context.function.sig.ident;
 
     quote!(
-        #[cfg(test)]
         mod #scenario {
             use super::*;
 
