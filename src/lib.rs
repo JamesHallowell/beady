@@ -1,262 +1,323 @@
-#[macro_export]
-macro_rules! beady {
-    (SCENARIO($scenario:ident) { $($body:tt)* } $($tail:tt)*) => {
-        #[allow(unused_imports, unused_variables)]
-        mod $scenario {
-            use super::*;
-            mod given {
-                use super::*;
-                $crate::beady!(("Scenario: ", stringify!($scenario)) [] $($body)*);
-            }
-        }
-        $crate::beady!($($tail)*);
-    };
-    //
-    // GIVEN
-    //
-    (($($path:tt)*) [$($test:tt)*] GIVEN($given:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@given "\n   Given: " ($($path)*) [$($test)*] GIVEN($given) { $($body)* } $($tail)*);
-    };
-    (@given $output_string:literal ($($path:tt)*) [$($test:tt)*] GIVEN($given:ident) { $($body:tt)* } $($tail:tt)*) => {
-        mod $given {
-            use super::*;
-            mod and_given {
-                use super::*;
-                $crate::beady!(@and_given ($($path)*, $output_string, stringify!($given)) [$($test)*] $($body)*);
-            }
-            mod when {
-                use super::*;
-                $crate::beady!(@given_when ($($path)*, $output_string, stringify!($given)) [$($test)*] $($body)*);
-            }
-            $crate::beady!(@only_and_or_when $($body)*);
-        }
-        $crate::beady!(($($path)*) [$($test)*] $($tail)*);
-    };
-    //
-    // WHEN
-    //
-    (($($path:tt)*) [$($test:tt)*] WHEN($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@when "\n    When: " ($($path)*) [$($test)*] WHEN($when) { $($body)* } $($tail)*);
-    };
-    (@when $output:literal ($($path:tt)*) [$($test:tt)*] WHEN($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        mod $when {
-            use super::*;
-            mod and_when {
-                use super::*;
-                $crate::beady!(@and_when ($($path)*, $output, stringify!($when)) [$($test)*] $($body)*);
-            }
-            mod then {
-                use super::*;
-                $crate::beady!(@when_then ($($path)*, $output, stringify!($when)) [$($test)*] $($body)*);
-            }
-            $crate::beady!(@only_and_or_then $($body)*);
-        }
-        $crate::beady!(($($path)*) [$($test)*] $($tail)*);
-    };
-    //
-    // AND_GIVEN
-    //
-    (@and_given ($($path:tt)*) [$($test:tt)*] AND($given:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@given "\n     and: " ($($path)*) [$($test)*] GIVEN($given) { $($body)* } $($tail)*);
-        $crate::beady!(@and_given ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@and_given ($($path:tt)*) [$($test:tt)*] WHEN($given:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@and_given ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@and_given ($($path:tt)*) [$($test:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(@and_given ($($path)*) [$($test)* $head] $($tail)*);
-    };
-    (@and_given ($($path:tt)*) [$($test:tt)*]) => {};
-    //
-    // GIVEN_WHEN
-    //
-    (@given_when ($($path:tt)*) [$($test:tt)*] WHEN($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@when "\n    When: " ($($path)*) [$($test)*] WHEN($when) { $($body)* });
-        $crate::beady!(@given_when ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@given_when ($($path:tt)*) [$($test:tt)*] AND($given:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@given_when ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@given_when ($($path:tt)*) [$($test:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(@given_when ($($path)*) [$($test)* $head] $($tail)*);
-    };
-    (@given_when ($($path:tt)*) [$($test:tt)*]) => {};
-    //
-    // AND_WHEN
-    //
-    (@and_when ($($path:tt)*) [$($test:tt)*] AND($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@when "\n     and: " ($($path)*) [$($test)*] WHEN($when) { $($body)* } $($tail)*);
-        $crate::beady!(@and_when ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@and_when ($($path:tt)*) [$($test:tt)*] THEN($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@and_when ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@and_when ($($path:tt)*) [$($test:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(@and_when ($($path)*) [$($test)* $head] $($tail)*);
-    };
-    (@and_when ($($path:tt)*) [$($test:tt)*]) => {};
-    //
-    // WHEN_THEN
-    //
-    (@when_then ($($path:tt)*) [$($test:tt)*] THEN($then:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@then $then ($($path)*, "\n    Then: ", stringify!($then)) [$($test)*] $($body)*);
-        $crate::beady!(@when_then ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@when_then ($($path:tt)*) [$($test:tt)*] AND($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@when_then ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@when_then ($($path:tt)*) [$($test:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(@when_then ($($path)*) [$($test)* $head] $($tail)*);
-    };
-    (@when_then ($($path:tt)*) [$($test:tt)*]) => {};
-    //
-    // THEN
-    //
-    (@then $then:ident ($($path:tt)*) [$($test:tt)*] AND($and_then:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@then $and_then ($($path)*, "\n     and: ", stringify!($and_then)) [$($test)*] $($body)*);
-        $crate::beady!(@then $then ($($path)*) [$($test)*] $($tail)*);
-    };
-    (@then $then:ident ($($path:tt)*) [$($test:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(@then $then ($($path)*) [$($test)* $head] $($tail)*);
-    };
-    (@then $then:ident ($($path:tt)*) [$($test:tt)*]) => {
-        #[test]
-        fn $then() {
-            if let Err(err) = std::panic::catch_unwind(|| { $($test)* }) {
-                let panic_message = match err.downcast_ref::<&'static str>() {
-                    Some(s) => *s,
-                    None => match err.downcast_ref::<String>() {
-                        Some(s) => &s[..],
-                        None => std::panic::resume_unwind(err),
-                    },
-                };
-                const SCENARIO_GIVEN_WHEN_THEN: &'static str = concat!($($path)*);
+use proc_macro::TokenStream;
+use quote::quote;
+use std::fmt::{Display, Formatter};
+use syn::{
+    parse_macro_input, parse_quote, spanned::Spanned, Attribute, Block, Error, Expr, ExprBlock,
+    Ident, ItemFn, Stmt,
+};
 
-                panic!(
-                    "-----------------------------------------------------\n\
-                    {SCENARIO_GIVEN_WHEN_THEN}\n\
-                    \n\
-                    {panic_message}\n\
-                    -----------------------------------------------------"
-                );
-            }
-        }
-    };
-    //
-    // Checking for bad sections
-    //
-    (@only_and_or_when AND($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_when $($body)*);
-        $crate::beady!(@only_and_or_when $($tail)*);
-    };
-    (@only_and_or_when WHEN($when:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_when $($tail)*);
-    };
-    (@only_and_or_when $a:ident($b:ident) { $($c:tt)* } $($d:tt)*) => {
-        compile_error!("only AND or WHEN sections are valid inside GIVEN");
-    };
-    (@only_and_or_when $head:tt $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_when $($tail)*);
-    };
-    (@only_and_or_when) => {};
-    (@only_and_or_then AND($then:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_then $($body)*);
-        $crate::beady!(@only_and_or_then $($tail)*);
-    };
-    (@only_and_or_then THEN($then:ident) { $($body:tt)* } $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_then $($body)*);
-        $crate::beady!(@only_and_or_then $($tail)*);
-    };
-    (@only_and_or_then $a:ident($b:ident) { $($c:tt)* } $($d:tt)*) => {
-        compile_error!("only AND or THEN sections are valid inside WHEN");
-    };
-    (@only_and_or_then $head:tt $($tail:tt)*) => {
-        $crate::beady!(@only_and_or_then $($tail)*);
-    };
-    (@only_and_or_then) => {};
-    //
-    // Token munching... 😋
-    // 
-    (($($path:tt)*) [] $head:tt $($tail:tt)*) => {
-        $crate::beady!(($($path)*) [$head] $($tail)*);
-    };
-    (($($path:tt)*) [$($test_body:tt)*] $head:tt $($tail:tt)*) => {
-        $crate::beady!(($($path)*) [$($test_body)* $head] $($tail)*);
-    };
-    (($($path:tt)*) [$($test_body:tt)*]) => {};
-    () => {};
+#[derive(Debug, Clone)]
+enum SectionType {
+    Given,
+    When,
+    Then,
+    AndGiven,
+    AndWhen,
+    AndThen,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone)]
+struct Section {
+    section_type: SectionType,
+    ident: Ident,
+    attribute: Attribute,
+}
 
-    beady! {
-        SCENARIO(pushing_and_popping_elements_from_a_vector) {
-            GIVEN(an_empty_vector) {
-                let mut vec = vec![];
-                assert!(vec.is_empty());
+#[derive(Debug, Clone)]
+struct Context {
+    function: ItemFn,
+    sections: Vec<Section>,
+    test_body: Vec<Stmt>,
+}
 
-                WHEN(an_element_is_pushed_to_the_vector) {
-                    vec.push(7);
+impl Context {
+    pub fn with_section(&self, section: Section) -> Self {
+        let mut context = self.clone();
+        context.sections.push(section);
+        context
+    }
+}
 
-                    THEN(the_vector_has_one_element) {
-                        assert_eq!(vec.len(), 1);
+fn ident_to_string(ident: &Ident) -> String {
+    ident.to_string().replace('_', " ")
+}
 
-                        AND(the_element_is_the_one_pushed) {
-                            assert_eq!(vec[0], 7);
-                        }
-                    }
+impl Display for Section {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let ident = ident_to_string(&self.ident);
 
-                    AND(the_element_is_popped) {
-                        let popped = vec.pop();
+        match self.section_type {
+            SectionType::Given => write!(f, "   Given: {}", ident),
+            SectionType::When => write!(f, "    When: {}", ident),
+            SectionType::Then => write!(f, "    Then: {}", ident),
+            SectionType::AndGiven => write!(f, "     and: {}", ident),
+            SectionType::AndWhen => write!(f, "     and: {}", ident),
+            SectionType::AndThen => write!(f, "     and: {}", ident),
+        }
+    }
+}
 
-                        THEN(the_vector_is_empty) {
-                            assert!(vec.is_empty());
+fn get_section(block: &ExprBlock) -> Option<Result<Section, Error>> {
+    for attribute in &block.attrs {
+        let section_type = if attribute.path.is_ident("given") {
+            Some(SectionType::Given)
+        } else if attribute.path.is_ident("when") {
+            Some(SectionType::When)
+        } else if attribute.path.is_ident("then") {
+            Some(SectionType::Then)
+        } else if attribute.path.is_ident("and_given") {
+            Some(SectionType::AndGiven)
+        } else if attribute.path.is_ident("and_when") {
+            Some(SectionType::AndWhen)
+        } else if attribute.path.is_ident("and_then") {
+            Some(SectionType::AndThen)
+        } else {
+            None
+        };
 
-                            AND(the_popped_element_is_the_one_previously_pushed) {
-                                assert_eq!(popped, Some(7));
+        if let Some(section_type) = section_type {
+            return match attribute.parse_args::<Ident>() {
+                Ok(ident) => Some(Ok(Section {
+                    section_type,
+                    ident,
+                    attribute: attribute.clone(),
+                })),
+                Err(e) => Some(Err(e)),
+            };
+        }
+    }
+
+    None
+}
+
+fn given(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+    let mut whens = vec![];
+    let mut givens = vec![];
+
+    for statement in block.stmts {
+        match statement {
+            Stmt::Expr(Expr::Block(ref block)) => {
+                let section = get_section(block);
+
+                match section {
+                    Some(section) => {
+                        let section = section?;
+                        let block = block.block.clone();
+
+                        match section.section_type {
+                            SectionType::When => {
+                                whens.push(when(context.with_section(section), block)?);
+                            }
+                            SectionType::AndGiven => {
+                                givens.push(given(context.with_section(section), block)?);
+                            }
+                            _ => {
+                                return Err(Error::new(
+                                    section.attribute.path.span(),
+                                    "Only \"when\" or \"and_given\" are allowed inside \"given\" section",
+                                ));
                             }
                         }
-
-                        AND(another_element_is_popped) {
-                            let popped = vec.pop();
-
-                            THEN(nothing_was_returned) {
-                                assert!(popped.is_none());
-                            }
-                        }
                     }
-                }
-
-                AND(a_list_of_items) {
-                    let items = [1, 2, 3];
-
-                    WHEN(the_items_are_pushed_onto_the_vector) {
-                        for item in items {
-                            vec.push(item);
-                        }
-
-                        THEN(the_length_of_the_vector_is_the_number_of_items_pushed) {
-                            assert_eq!(vec.len(), items.len());
-                        }
+                    None => {
+                        context.test_body.push(statement);
                     }
                 }
             }
+            statement => context.test_body.push(statement),
         }
+    }
 
-        SCENARIO(clearing_elements_from_a_vector) {
-            GIVEN(a_vector_with_multiple_elements) {
-                let mut vec = vec![1, 2, 3];
+    let ident = context.sections.last().unwrap().ident.clone();
 
-                WHEN(the_vector_is_cleared) {
-                    vec.clear();
+    Ok(quote! {
+        mod #ident {
+            use super::*;
 
-                    THEN(then_vector_is_empty) {
-                        assert!(vec.is_empty());
+            mod when {
+                use super::*;
+                #(#whens)*
+            }
+
+            mod and {
+                use super::*;
+                #(#givens)*
+            }
+        }
+    })
+}
+
+fn when(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+    let mut thens = vec![];
+    let mut whens = vec![];
+
+    for statement in block.stmts {
+        match statement {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+                Some(section) => {
+                    let section = section?;
+                    let block = block.block.clone();
+
+                    match section.section_type {
+                        SectionType::Then => {
+                            thens.push(then(context.with_section(section), block)?);
+                        }
+                        SectionType::AndWhen => {
+                            whens.push(when(context.with_section(section), block)?);
+                        }
+                        _ => {
+                            return Err(Error::new(
+                                section.attribute.path.span(),
+                                "Only \"then\" or \"and_when\" are allowed inside \"when\" section",
+                            ));
+                        }
                     }
                 }
+                None => {
+                    context.test_body.push(statement);
+                }
+            },
+            statement => context.test_body.push(statement),
+        }
+    }
+
+    let ident = context.sections.last().unwrap().ident.clone();
+
+    Ok(quote! {
+        mod #ident {
+            use super::*;
+
+            mod then {
+                use super::*;
+                #(#thens)*
+            }
+
+            mod and {
+                use super::*;
+                #(#whens)*
+            }
+        }
+    })
+}
+
+fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+    let mut thens = vec![];
+
+    for statement in block.stmts {
+        match statement {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+                Some(section) => {
+                    let section = section?;
+                    let block = block.block.clone();
+
+                    match section.section_type {
+                        SectionType::AndThen => {
+                            thens.push(then(context.with_section(section), block)?);
+                        }
+                        _ => {
+                            return Err(Error::new(
+                                section.attribute.path.span(),
+                                "Only \"and_then\" is allowed inside \"then\" section",
+                            ));
+                        }
+                    }
+                }
+                None => {
+                    context.test_body.push(statement);
+                }
+            },
+            statement => {
+                context.test_body.push(statement);
             }
         }
     }
+
+    let ident = context.sections.last().unwrap().ident.clone();
+    let attributes = context.function.attrs;
+    let asyncness = context.function.sig.asyncness;
+    let test_body = context.test_body.clone();
+
+    let given_when_then = context.sections.into_iter().fold(
+        format!(
+            "Scenario: {}\n",
+            ident_to_string(&context.function.sig.ident)
+        ),
+        |str, section| format!("{}{}\n", str, section),
+    );
+
+    let scenario = format!("{}\n{}{}", "-".repeat(80), given_when_then, "-".repeat(80));
+
+    Ok(quote! {
+        #(#attributes)*
+        #asyncness fn #ident() {
+            println!("{}", #scenario);
+            #(#test_body)*
+        }
+
+        #(#thens)*
+    })
+}
+
+#[proc_macro_attribute]
+pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut function = parse_macro_input!(item as ItemFn);
+
+    if function.attrs.is_empty() {
+        function.attrs.push(parse_quote! {
+            #[test]
+        });
+    }
+
+    let mut context = Context {
+        function: function.clone(),
+        sections: vec![],
+        test_body: vec![],
+    };
+
+    let mut givens = vec![];
+
+    for statement in function.block.stmts {
+        match statement {
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+                Some(Ok(section)) => match section.section_type {
+                    SectionType::Given => {
+                        match given(context.with_section(section), block.block.clone()) {
+                            Ok(given) => givens.push(given),
+                            Err(err) => return err.to_compile_error().into(),
+                        };
+                    }
+                    _ => {
+                        return Error::new(
+                            section.attribute.path.span(),
+                            "Only \"given\" is allowed inside \"scenario\" section",
+                        )
+                        .to_compile_error()
+                        .into();
+                    }
+                },
+                Some(Err(error)) => {
+                    return error.to_compile_error().into();
+                }
+                None => {
+                    context.test_body.push(statement.clone());
+                }
+            },
+            statement => context.test_body.push(statement),
+        }
+    }
+
+    let scenario = context.function.sig.ident;
+
+    quote!(
+        #[cfg(test)]
+        mod #scenario {
+            use super::*;
+
+            mod given {
+                use super::*;
+                #(#givens)*
+            }
+        }
+    )
+    .into()
 }
