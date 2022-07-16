@@ -1,0 +1,28 @@
+version: 2.1
+
+jobs:
+  build:
+    parameters:
+      toolchain:
+        type: string
+    docker:
+      - image: rust
+    steps:
+      - checkout
+      - run:
+          name: Set toolchain
+          command: rustup update << parameters.toolchain >> && rustup default << parameters.toolchain >>
+      - run:
+          name: Build
+          command: cargo build --verbose
+      - run:
+          name: Test
+          command: cargo test --verbose --no-fail-fast
+
+workflows:
+  build:
+    jobs:
+      - build:
+          matrix:
+            parameters:
+              toolchain: ["stable", "beta", "nightly"]
