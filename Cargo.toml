@@ -1,6 +1,6 @@
 [package]
 name = "beady"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "A macro for writing tests in a Behaviour Driven (BD) style."
 license = "MIT OR Apache-2.0"
@@ -16,3 +16,4 @@ syn = { version = "1.0.98", features = ["full", "extra-traits", "parsing"] }
 
 [dev-dependencies]
 tokio = { version = "1.19.2", features = ["macros", "rt", "time"] }
+trybuild = "1.0.63"

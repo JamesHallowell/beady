@@ -3,16 +3,13 @@ use beady::scenario;
 // The example from Catch2 translated to Rust.
 #[scenario]
 fn vector_can_be_sized_and_resized() {
-    #[given(an_empty_vector)]
-    {
+    'given_an_empty_vector: {
         let mut v = vec![];
 
-        #[when(push_is_called)]
-        {
+        'when_an_element_is_pushed: {
             v.push("hullo");
 
-            #[then(the_size_changes)]
-            {
+            'then_the_size_changes: {
                 assert_eq!(v.len(), 1);
             }
         }
@@ -20,80 +17,39 @@ fn vector_can_be_sized_and_resized() {
 }
 
 #[scenario]
-fn nested() {
-    #[given(a)]
-    {
-        let a = 5;
+fn large_scenario() {
+    'given_an_empty_vector: {
+        let mut v = vec![];
 
-        #[and_given(b)]
-        {
-            let b = 3;
+        'when_an_element_is_pushed: {
+            v.push("hullo");
 
-            #[when(a_is_added_to_b)]
-            {
-                let c = a + b;
+            'then_the_size_changes: {
+                assert_eq!(v.len(), 1);
+            }
 
-                #[then(the_result_is_a_plus_b)]
-                {
-                    assert_eq!(c, a + b);
-                }
+            'and_when_an_element_is_removed: {
+                v.pop();
 
-                #[and_when(c_is_multiplied_by_b)]
-                {
-                    let d = c * b;
+                'then_the_size_changes: {
+                    assert_ne!(v.len(), 1);
 
-                    #[then(the_result_is_b_times_c)]
-                    {
-                        assert_eq!(d, b * c);
+                    'and_then_the_vec_is_empty: {
+                        assert!(v.is_empty());
                     }
                 }
             }
         }
-    }
-}
 
-#[scenario]
-fn pushing_an_element_to_a_vec() {
-    #[given(an_empty_vec)]
-    {
-        let mut vec = vec![];
+        'and_given_a_vec_with_some_elements: {
+            let other = vec![1, 2, 3];
 
-        #[when(an_element_is_pushed_to_the_vec)]
-        {
-            vec.push(7);
+            'when_the_vec_is_merged: {
+                v.extend(other);
 
-            #[then(the_vec_should_have_one_element)]
-            {
-                assert_eq!(vec.len(), 1);
-
-                #[and_then(the_element_should_be_the_pushed_value)]
-                assert_eq!(vec[0], 7);
-            }
-
-            #[and_when(the_vec_is_cleared)]
-            {
-                vec.clear();
-
-                #[then(the_vec_should_be_empty)]
-                assert!(vec.is_empty());
-            }
-        }
-    }
-}
-
-#[scenario]
-fn then_section_is_allowed_to_be_a_single_statement() {
-    #[given(a_then_section_consisting_of_a_single_statement)]
-    {
-        #[when(that_section_is_parsed)]
-        {
-            #[then(it_should_be_valid)]
-            assert!(true);
-
-            #[then(one_more_thing)]
-            {
-                #[and_then(it_should_be_allowed_for_and_then_as_well)]
-                assert!(true);
+                'then_the_size_changes: {
+                    assert_eq!(v.len(), 3);
+                }
             }
         }
     }

@@ -13,24 +13,26 @@ use beady::scenario;
 
 #[scenario]
 fn pushing_an_element_to_a_vec() {
-    #[given(an_empty_vec)] {
+    'given_an_empty_vec: {
         let mut vec = vec![];
         
-        #[when(an_element_is_pushed_to_the_vec)] {
+        'when_an_element_is_pushed_to_the_vec: {
             vec.push(7);
             
-            #[then(the_vec_should_have_one_element)] {
+            'then_the_vec_should_have_one_element: {
                 assert_eq!(vec.len(), 1);
                 
-                #[and_then(that_element_should_be_the_pushed_value)]
-                assert_eq!(vec[0], 7);
+                'and_then_that_element_should_be_the_pushed_value: {
+                    assert_eq!(vec[0], 7);
+                }
             }
             
-            #[and_when(the_vec_is_cleared)] {
+            'and_when_the_vec_is_cleared: {
                 vec.clear();
                 
-                #[then(the_vec_should_be_empty)]
-                assert!(vec.is_empty());
+                'then_the_vec_should_be_empty: {
+                    assert!(vec.is_empty());
+                }
             }
         }
     }
@@ -71,7 +73,7 @@ thread 'pushing_an_element_to_a_vec::given::an_empty_vec::when::an_element_is_pu
 
 ## Usage
 
-Inspired by the [BDD-style test cases from Catch2](https://github.com/catchorg/Catch2/blob/devel/docs/test-cases-and-sections.md#bdd-style-test-cases), you can annotate a function with `#[scenario]` to make it a test, and then use the `#[given]`, `#[when]`, and `#[then]` attributes to describe the test. Dependent clauses can be specified with the `#[and_given]`, `#[and_when]`, and `#[and_then]` attributes.
+Inspired by the [BDD-style test cases from Catch2](https://github.com/catchorg/Catch2/blob/devel/docs/test-cases-and-sections.md#bdd-style-test-cases), you can annotate a function with `#[scenario]` to make it into a BDD-style test. Within the function you can then use `'given_`, `'when_`, and `'then_` prefixes to label blocks and structure your test cases. Dependent clauses can be specified with the `'and_given_`, `'and_when_`, and `'and_then_` prefixes.
 
 ### `#[scenario]`
 

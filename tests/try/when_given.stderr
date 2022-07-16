@@ -1,0 +1,5 @@
+error: Only "then" or "and_when" are allowed inside "when" section
+ --> tests/try/when_given.rs:7:13
+  |
+7 |             'given_something: {
+  |             ^^^^^^^^^^^^^^^^

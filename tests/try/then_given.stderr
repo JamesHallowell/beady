@@ -1,0 +1,5 @@
+error: Only "and_then" is allowed inside "then" section
+ --> tests/try/then_given.rs:8:17
+  |
+8 |                 'given_something: {
+  |                 ^^^^^^^^^^^^^^^^

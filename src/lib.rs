@@ -1,12 +1,9 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use std::fmt::{Display, Formatter};
-use syn::{
-    parse_macro_input, parse_quote, spanned::Spanned, Attribute, Block, Error, Expr,
-    Ident, ItemFn, Stmt,
-};
+use syn::{parse_macro_input, parse_quote, Error, Expr, ExprBlock, Ident, ItemFn, Stmt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum SectionType {
     Given,
     When,
@@ -16,25 +13,53 @@ enum SectionType {
     AndThen,
 }
 
+impl SectionType {
+    fn all() -> [Self; 6] {
+        [
+            Self::Given,
+            Self::When,
+            Self::Then,
+            Self::AndGiven,
+            Self::AndWhen,
+            Self::AndThen,
+        ]
+    }
+
+    fn prefix(&self) -> &str {
+        match self {
+            SectionType::Given => "given_",
+            SectionType::When => "when_",
+            SectionType::Then => "then_",
+            SectionType::AndGiven => "and_given_",
+            SectionType::AndWhen => "and_when_",
+            SectionType::AndThen => "and_then_",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Section {
     section_type: SectionType,
     ident: Ident,
-    attribute: Attribute,
+    block: ExprBlock,
 }
 
 #[derive(Debug, Clone)]
 struct Context {
     function: ItemFn,
     sections: Vec<Section>,
-    test_body: Vec<Stmt>,
+    body: Vec<Stmt>,
 }
 
 impl Context {
-    pub fn with_section(&self, section: Section) -> Self {
+    fn append_section(&self, section: Section) -> Self {
         let mut context = self.clone();
         context.sections.push(section);
         context
+    }
+
+    fn remaining_statements(&self) -> Vec<Stmt> {
+        self.sections.last().unwrap().block.block.stmts.clone()
     }
 }
 
@@ -57,235 +82,187 @@ impl Display for Section {
     }
 }
 
-fn get_section(attributes: &Vec<Attribute>) -> Option<Result<Section, Error>> {
-    for attribute in attributes {
-        let section_type = if attribute.path.is_ident("given") {
-            Some(SectionType::Given)
-        } else if attribute.path.is_ident("when") {
-            Some(SectionType::When)
-        } else if attribute.path.is_ident("then") {
-            Some(SectionType::Then)
-        } else if attribute.path.is_ident("and_given") {
-            Some(SectionType::AndGiven)
-        } else if attribute.path.is_ident("and_when") {
-            Some(SectionType::AndWhen)
-        } else if attribute.path.is_ident("and_then") {
-            Some(SectionType::AndThen)
-        } else {
-            None
-        };
+fn get_section(block: &ExprBlock) -> Option<Section> {
+    if let Some(label) = &block.label {
+        for section_type in SectionType::all() {
+            let ident = label.name.ident.to_string();
 
-        if let Some(section_type) = section_type {
-            return match attribute.parse_args::<Ident>() {
-                Ok(ident) => Some(Ok(Section {
+            if ident.starts_with(section_type.prefix()) {
+                let (_, description) = ident.split_once(section_type.prefix()).unwrap();
+                let ident = Ident::new(description, label.name.ident.span());
+
+                return Some(Section {
                     section_type,
                     ident,
-                    attribute: attribute.clone(),
-                })),
-                Err(e) => Some(Err(e)),
-            };
+                    block: block.clone(),
+                });
+            }
         }
     }
 
     None
 }
 
-fn given(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     let mut whens = vec![];
     let mut givens = vec![];
 
-    for statement in block.stmts {
+    for statement in context.remaining_statements() {
         match statement {
             Stmt::Expr(Expr::Block(ref block)) => {
-                let section = get_section(&block.attrs);
+                if let Some(section) = get_section(block) {
+                    let context = context.append_section(section.clone());
 
-                match section {
-                    Some(section) => {
-                        let section = section?;
-                        let block = block.block.clone();
-
-                        match section.section_type {
-                            SectionType::When => {
-                                whens.push(when(context.with_section(section), block)?);
-                            }
-                            SectionType::AndGiven => {
-                                givens.push(given(context.with_section(section), block)?);
-                            }
-                            _ => {
-                                return Err(Error::new(
-                                    section.attribute.path.span(),
-                                    "Only \"when\" or \"and_given\" are allowed inside \"given\" section",
-                                ));
-                            }
+                    match section.section_type {
+                        SectionType::When => {
+                            whens.push(when(context)?);
+                        }
+                        SectionType::AndGiven => {
+                            givens.push(given(context)?);
+                        }
+                        _ => {
+                            return Err(Error::new(
+                                section.ident.span(),
+                                "Only \"when\" or \"and_given\" are allowed inside \"given\" section",
+                            ));
                         }
                     }
-                    None => {
-                        context.test_body.push(statement);
-                    }
+                } else {
+                    context.body.push(statement);
                 }
             }
-            statement => context.test_body.push(statement),
+            statement => context.body.push(statement),
         }
     }
 
-    let ident = context.sections.last().unwrap().ident.clone();
-
-    Ok(quote! {
-        mod #ident {
-            use super::*;
-
+    let whens = if !whens.is_empty() {
+        Some(quote! {
             mod when {
                 use super::*;
                 #(#whens)*
             }
+        })
+    } else {
+        None
+    };
 
+    let givens = if !givens.is_empty() {
+        Some(quote! {
             mod and {
                 use super::*;
                 #(#givens)*
             }
+        })
+    } else {
+        None
+    };
+
+    let ident = context.sections.last().unwrap().ident.clone();
+    Ok(quote! {
+        mod #ident {
+            use super::*;
+            #whens
+            #givens
         }
     })
 }
 
-fn when(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+fn when(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     let mut thens = vec![];
     let mut whens = vec![];
 
-    for statement in block.stmts {
+    for statement in context.remaining_statements() {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
-                Some(section) => {
-                    let section = section?;
-                    let block = block.block.clone();
+            Stmt::Expr(Expr::Block(ref block)) => {
+                if let Some(section) = get_section(block) {
+                    let inner_context = context.append_section(section.clone());
 
                     match section.section_type {
                         SectionType::Then => {
-                            thens.push(then(context.with_section(section), block)?);
+                            thens.push(then(inner_context)?);
                         }
                         SectionType::AndWhen => {
-                            whens.push(when(context.with_section(section), block)?);
+                            whens.push(when(inner_context)?);
                         }
                         _ => {
                             return Err(Error::new(
-                                section.attribute.path.span(),
+                                section.ident.span(),
                                 "Only \"then\" or \"and_when\" are allowed inside \"when\" section",
                             ));
                         }
                     }
-                }
-                None => {
-                    context.test_body.push(statement);
-                }
-            },
-            Stmt::Semi(Expr::Macro(ref mac, ), _) => {
-                match get_section(&mac.attrs) {
-                    Some(section) => {
-                        let section = section?;
-
-                        if ! matches!(section.section_type, SectionType::Then) {
-                            return Err(Error::new(
-                                section.attribute.path.span(),
-                                "Only \"then\" or \"and_when\" are allowed inside \"when\" section",
-                            ));
-                        }
-
-                        let mac = mac.mac.clone();
-                        let block = parse_quote! {
-                            { #mac }
-                        };
-
-                        thens.push(then(context.with_section(section), block)?);
-                    }
-                    None => {
-                        context.test_body.push(statement);
-                    }
+                } else {
+                    context.body.push(statement);
                 }
             }
-            statement => context.test_body.push(statement),
+            statement => context.body.push(statement),
         }
     }
 
-    let ident = context.sections.last().unwrap().ident.clone();
-
-    Ok(quote! {
-        mod #ident {
-            use super::*;
-
+    let thens = if !thens.is_empty() {
+        Some(quote! {
             mod then {
                 use super::*;
                 #(#thens)*
             }
+        })
+    } else {
+        None
+    };
 
+    let whens = if !whens.is_empty() {
+        Some(quote! {
             mod and {
                 use super::*;
                 #(#whens)*
             }
+        })
+    } else {
+        None
+    };
+
+    let ident = context.sections.last().unwrap().ident.clone();
+    Ok(quote! {
+        mod #ident {
+            use super::*;
+
+            #thens
+            #whens
         }
     })
 }
 
-fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, Error> {
+fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     let mut thens = vec![];
 
-    for statement in block.stmts {
+    for statement in context.remaining_statements() {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
-                Some(section) => {
-                    let section = section?;
-                    let block = block.block.clone();
+            Stmt::Expr(Expr::Block(ref block)) => {
+                if let Some(section) = get_section(block) {
+                    let context = context.append_section(section.clone());
 
                     match section.section_type {
                         SectionType::AndThen => {
-                            thens.push(then(context.with_section(section), block)?);
+                            thens.push(then(context)?);
                         }
                         _ => {
                             return Err(Error::new(
-                                section.attribute.path.span(),
+                                section.ident.span(),
                                 "Only \"and_then\" is allowed inside \"then\" section",
                             ));
                         }
                     }
-                }
-                None => {
-                    context.test_body.push(statement);
-                }
-            },
-            Stmt::Semi(Expr::Macro(ref mac, ), _) => {
-                match get_section(&mac.attrs) {
-                    Some(section) => {
-                        let section = section?;
-
-                        if ! matches!(section.section_type, SectionType::AndThen) {
-                            return Err(Error::new(
-                                section.attribute.path.span(),
-                                "Only \"and_then\" is allowed inside \"then\" section",
-                            ));
-                        }
-
-                        let mac = mac.mac.clone();
-                        let block = parse_quote! {
-                            { #mac }
-                        };
-
-                        thens.push(then(context.with_section(section), block)?);
-                    }
-                    None => {
-                        context.test_body.push(statement);
-                    }
+                } else {
+                    context.body.push(statement);
                 }
             }
             statement => {
-                context.test_body.push(statement);
+                context.body.push(statement);
             }
         }
     }
 
-    let ident = context.sections.last().unwrap().ident.clone();
-    let attributes = context.function.attrs;
-    let asyncness = context.function.sig.asyncness;
-    let test_body = context.test_body.clone();
-
-    let given_when_then = context.sections.into_iter().fold(
+    let scenario_description = context.sections.iter().fold(
         format!(
             "Scenario: {}\n",
             ident_to_string(&context.function.sig.ident)
@@ -293,21 +270,34 @@ fn then(mut context: Context, block: Block) -> Result<proc_macro2::TokenStream, 
         |str, section| format!("{}{}\n", str, section),
     );
 
+    let ident = context.sections.last().unwrap().ident.clone();
+    let thens = if !thens.is_empty() {
+        Some(quote! {
+            mod #ident {
+            use super::*;
+                mod and {
+                    use super::*;
+                    #(#thens)*
+                }
+            }
+        })
+    } else {
+        None
+    };
+
+    let attributes = context.function.attrs;
+    let asyncness = context.function.sig.asyncness;
+    let test_body = context.body.clone();
+
     Ok(quote! {
         #(#attributes)*
+        #[allow(unused_variables, unused_mut)]
         #asyncness fn #ident() {
-            println!("\n{}", #given_when_then);
+            println!("\n{}", #scenario_description);
             #(#test_body)*
         }
 
-        mod #ident {
-            use super::*;
-
-            mod and {
-                use super::*;
-                #(#thens)*
-            }
-        }
+        #thens
     })
 }
 
@@ -324,51 +314,59 @@ pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut context = Context {
         function: function.clone(),
         sections: vec![],
-        test_body: vec![],
+        body: vec![],
     };
 
     let mut givens = vec![];
 
     for statement in function.block.stmts {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(&block.attrs) {
-                Some(Ok(section)) => match section.section_type {
-                    SectionType::Given => {
-                        match given(context.with_section(section), block.block.clone()) {
-                            Ok(given) => givens.push(given),
-                            Err(err) => return err.to_compile_error().into(),
-                        };
+            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+                Some(section) => {
+                    let context = context.append_section(section.clone());
+
+                    match section.section_type {
+                        SectionType::Given => {
+                            match given(context) {
+                                Ok(given) => givens.push(given),
+                                Err(err) => return err.to_compile_error().into(),
+                            };
+                        }
+                        _ => {
+                            return Error::new(
+                                section.ident.span(),
+                                "Only \"given\" is allowed inside \"scenario\" section",
+                            )
+                            .to_compile_error()
+                            .into();
+                        }
                     }
-                    _ => {
-                        return Error::new(
-                            section.attribute.path.span(),
-                            "Only \"given\" is allowed inside \"scenario\" section",
-                        )
-                        .to_compile_error()
-                        .into();
-                    }
-                },
-                Some(Err(error)) => {
-                    return error.to_compile_error().into();
                 }
                 None => {
-                    context.test_body.push(statement.clone());
+                    context.body.push(statement.clone());
                 }
             },
-            statement => context.test_body.push(statement),
+            statement => context.body.push(statement),
         }
     }
 
     let scenario = context.function.sig.ident;
-
-    quote!(
-        mod #scenario {
-            use super::*;
-
+    let givens = if !givens.is_empty() {
+        Some(quote! {
             mod given {
                 use super::*;
                 #(#givens)*
             }
+        })
+    } else {
+        None
+    };
+
+    quote!(
+        #[cfg(test)]
+        mod #scenario {
+            use super::*;
+            #givens
         }
     )
     .into()
