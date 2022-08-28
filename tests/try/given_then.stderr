@@ -1,5 +1,5 @@
 error: Only "when" or "and_given" are allowed inside "given" section
- --> tests/try/given_then.rs:6:9
+ --> tests/try/given_then.rs:7:9
   |
-6 |         'then_something: {
+7 |         'then_something: {
   |         ^^^^^^^^^^^^^^^

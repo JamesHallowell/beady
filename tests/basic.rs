@@ -2,12 +2,14 @@ use beady::scenario;
 
 // The example from Catch2 translated to Rust.
 #[scenario]
+#[test]
 fn vector_can_be_sized_and_resized() {
     'given_an_empty_vector: {
         let mut v = vec![];
+        assert!(v.is_empty());
 
         'when_an_element_is_pushed: {
-            v.push("hullo");
+            v.push("hello");
 
             'then_the_size_changes: {
                 assert_eq!(v.len(), 1);
@@ -17,6 +19,7 @@ fn vector_can_be_sized_and_resized() {
 }
 
 #[scenario]
+#[test]
 fn large_scenario() {
     'given_an_empty_vector: {
         let mut v = vec![];

@@ -1,5 +1,5 @@
 error: Only "and_then" is allowed inside "then" section
- --> tests/try/then_when.rs:8:17
+ --> tests/try/then_when.rs:9:17
   |
-8 |                 'when_something: {
+9 |                 'when_something: {
   |                 ^^^^^^^^^^^^^^^

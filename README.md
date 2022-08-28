@@ -12,6 +12,7 @@ A macro for writing tests in a Behaviour Driven (BD) style. Inspired by [Catch2]
 use beady::scenario;
 
 #[scenario]
+#[test]
 fn pushing_an_element_to_a_vec() {
     'given_an_empty_vec: {
         let mut vec = vec![];
@@ -73,28 +74,4 @@ thread 'pushing_an_element_to_a_vec::given::an_empty_vec::when::an_element_is_pu
 
 ## Usage
 
-Inspired by the [BDD-style test cases from Catch2](https://github.com/catchorg/Catch2/blob/devel/docs/test-cases-and-sections.md#bdd-style-test-cases), you can annotate a function with `#[scenario]` to make it into a BDD-style test. Within the function you can then use `'given_`, `'when_`, and `'then_` prefixes to label blocks and structure your test cases. Dependent clauses can be specified with the `'and_given_`, `'and_when_`, and `'and_then_` prefixes.
-
-### `#[scenario]`
-
-By default the `#[scenario]` attribute will generate tests like:
-
-```rust
-#[test]
-fn foo() { ... }
-```
-
-If you want to use another test attribute you can specify it after the `#[scenario]` attribute like so:
-
-```rust
-#[scenario]
-#[tokio::test]
-async fn my_scenario() { ... }
-```
-
-Which will generate tests like:
-
-```rust
-#[tokio::test]
-async fn foo() { ... }
-```
+Inspired by the [BDD-style test cases from Catch2](https://github.com/catchorg/Catch2/blob/devel/docs/test-cases-and-sections.md#bdd-style-test-cases), you can annotate a test with `#[scenario]` to make it into a BDD-style test. Within the test you can then use `'given_`, `'when_`, and `'then_` prefixes to label blocks and structure your test cases. Dependent clauses can be specified with the `'and_given_`, `'and_when_`, and `'and_then_` prefixes.

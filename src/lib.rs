@@ -1,7 +1,9 @@
-use proc_macro::TokenStream;
-use quote::quote;
-use std::fmt::{Display, Formatter};
-use syn::{parse_macro_input, parse_quote, Error, Expr, ExprBlock, Ident, ItemFn, Stmt};
+use {
+    proc_macro::TokenStream,
+    quote::quote,
+    std::fmt::{Display, Formatter},
+    syn::{parse_macro_input, Error, Expr, ExprBlock, Ident, ItemFn, Stmt},
+};
 
 #[derive(Debug, Copy, Clone)]
 enum SectionType {
@@ -44,6 +46,12 @@ struct Section {
     block: ExprBlock,
 }
 
+impl Section {
+    fn statements(&self) -> Vec<Stmt> {
+        self.block.block.stmts.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Context {
     function: ItemFn,
@@ -59,7 +67,10 @@ impl Context {
     }
 
     fn remaining_statements(&self) -> Vec<Stmt> {
-        self.sections.last().unwrap().block.block.stmts.clone()
+        self.sections
+            .last()
+            .map(Section::statements)
+            .unwrap_or_default()
     }
 }
 
@@ -303,13 +314,7 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
 
 #[proc_macro_attribute]
 pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut function = parse_macro_input!(item as ItemFn);
-
-    if function.attrs.is_empty() {
-        function.attrs.push(parse_quote! {
-            #[test]
-        });
-    }
+    let function = parse_macro_input!(item as ItemFn);
 
     let mut context = Context {
         function: function.clone(),
@@ -363,7 +368,6 @@ pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     quote!(
-        #[cfg(test)]
         mod #scenario {
             use super::*;
             #givens
