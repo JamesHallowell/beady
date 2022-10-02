@@ -117,6 +117,7 @@ fn get_section(block: &ExprBlock) -> Option<Section> {
 fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     let mut whens = vec![];
     let mut givens = vec![];
+    let mut thens = vec![];
 
     for statement in context.remaining_statements() {
         match statement {
@@ -128,13 +129,16 @@ fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
                         SectionType::When => {
                             whens.push(when(context)?);
                         }
+                        SectionType::Then => {
+                            thens.push(then(context)?);
+                        }
                         SectionType::AndGiven => {
                             givens.push(given(context)?);
                         }
                         _ => {
                             return Err(Error::new(
                                 section.ident.span(),
-                                "Only \"when\" or \"and_given\" are allowed inside \"given\" section",
+                                "Only \"when\", \"then\", or \"and_given\" are allowed inside \"given\" section",
                             ));
                         }
                     }
@@ -146,34 +150,22 @@ fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
         }
     }
 
-    let whens = if !whens.is_empty() {
-        Some(quote! {
-            mod when {
-                use super::*;
-                #(#whens)*
-            }
-        })
-    } else {
-        None
-    };
-
-    let givens = if !givens.is_empty() {
-        Some(quote! {
-            mod and {
-                use super::*;
-                #(#givens)*
-            }
-        })
-    } else {
-        None
-    };
-
     let ident = context.sections.last().unwrap().ident.clone();
     Ok(quote! {
         mod #ident {
             use super::*;
-            #whens
-            #givens
+            mod and {
+                use super::*;
+                #(#givens)*
+            }
+            mod when {
+                use super::*;
+                #(#whens)*
+            }
+            mod then {
+                use super::*;
+                #(#thens)*
+            }
         }
     })
 }
@@ -210,35 +202,18 @@ fn when(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
         }
     }
 
-    let thens = if !thens.is_empty() {
-        Some(quote! {
-            mod then {
-                use super::*;
-                #(#thens)*
-            }
-        })
-    } else {
-        None
-    };
-
-    let whens = if !whens.is_empty() {
-        Some(quote! {
-            mod and {
-                use super::*;
-                #(#whens)*
-            }
-        })
-    } else {
-        None
-    };
-
     let ident = context.sections.last().unwrap().ident.clone();
     Ok(quote! {
         mod #ident {
             use super::*;
-
-            #thens
-            #whens
+            mod and {
+                use super::*;
+                #(#whens)*
+            }
+            mod then {
+                use super::*;
+                #(#thens)*
+            }
         }
     })
 }
@@ -282,20 +257,6 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     );
 
     let ident = context.sections.last().unwrap().ident.clone();
-    let thens = if !thens.is_empty() {
-        Some(quote! {
-            mod #ident {
-            use super::*;
-                mod and {
-                    use super::*;
-                    #(#thens)*
-                }
-            }
-        })
-    } else {
-        None
-    };
-
     let attributes = context.function.attrs;
     let asyncness = context.function.sig.asyncness;
     let test_body = context.body.clone();
@@ -308,7 +269,13 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
             #(#test_body)*
         }
 
-        #thens
+        mod #ident {
+            use super::*;
+            mod and {
+                use super::*;
+                #(#thens)*
+            }
+        }
     })
 }
 

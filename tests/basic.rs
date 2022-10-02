@@ -57,3 +57,15 @@ fn large_scenario() {
         }
     }
 }
+
+#[scenario]
+#[test]
+fn given_then_is_valid() {
+    'given_something: {
+        let something = true;
+
+        'then_something: {
+            assert!(something);
+        }
+    }
+}
