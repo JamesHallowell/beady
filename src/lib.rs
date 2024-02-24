@@ -263,7 +263,7 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
 
     Ok(quote! {
         #(#attributes)*
-        #[allow(unused_variables, unused_mut)]
+        #[allow(unused_variables, unused_mut, unused_labels)]
         #asyncness fn #ident() {
             println!("\n{}", #scenario_description);
             #(#test_body)*
