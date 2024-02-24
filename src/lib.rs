@@ -150,22 +150,34 @@ fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
         }
     }
 
+    let givens = (!givens.is_empty()).then_some(quote! {
+        mod and {
+            use super::*;
+            #(#givens)*
+        }
+    });
+
+    let whens = (!whens.is_empty()).then_some(quote! {
+        mod when {
+            use super::*;
+            #(#whens)*
+        }
+    });
+
+    let thens = (!thens.is_empty()).then_some(quote! {
+        mod then {
+            use super::*;
+            #(#thens)*
+        }
+    });
+
     let ident = context.sections.last().unwrap().ident.clone();
     Ok(quote! {
         mod #ident {
             use super::*;
-            mod and {
-                use super::*;
-                #(#givens)*
-            }
-            mod when {
-                use super::*;
-                #(#whens)*
-            }
-            mod then {
-                use super::*;
-                #(#thens)*
-            }
+            #givens
+            #whens
+            #thens
         }
     })
 }
@@ -202,18 +214,26 @@ fn when(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
         }
     }
 
+    let whens = (!whens.is_empty()).then_some(quote! {
+        mod and {
+            use super::*;
+            #(#whens)*
+        }
+    });
+
+    let thens = (!thens.is_empty()).then_some(quote! {
+        mod then {
+            use super::*;
+            #(#thens)*
+        }
+    });
+
     let ident = context.sections.last().unwrap().ident.clone();
     Ok(quote! {
         mod #ident {
             use super::*;
-            mod and {
-                use super::*;
-                #(#whens)*
-            }
-            mod then {
-                use super::*;
-                #(#thens)*
-            }
+            #whens
+            #thens
         }
     })
 }
@@ -261,6 +281,16 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
     let asyncness = context.function.sig.asyncness;
     let test_body = context.body.clone();
 
+    let thens = (!thens.is_empty()).then_some(quote! {
+        mod #ident {
+            use super::*;
+            mod and {
+                use super::*;
+                #(#thens)*
+            }
+        }
+    });
+
     Ok(quote! {
         #(#attributes)*
         #[allow(unused_variables, unused_mut, unused_labels)]
@@ -269,13 +299,7 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
             #(#test_body)*
         }
 
-        mod #ident {
-            use super::*;
-            mod and {
-                use super::*;
-                #(#thens)*
-            }
-        }
+        #thens
     })
 }
 
