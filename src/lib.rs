@@ -121,7 +121,7 @@ fn given(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
 
     for statement in context.remaining_statements() {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => {
+            Stmt::Expr(Expr::Block(ref block), _) => {
                 if let Some(section) = get_section(block) {
                     let context = context.append_section(section.clone());
 
@@ -188,7 +188,7 @@ fn when(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
 
     for statement in context.remaining_statements() {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => {
+            Stmt::Expr(Expr::Block(ref block), _) => {
                 if let Some(section) = get_section(block) {
                     let inner_context = context.append_section(section.clone());
 
@@ -243,7 +243,7 @@ fn then(mut context: Context) -> Result<proc_macro2::TokenStream, Error> {
 
     for statement in context.remaining_statements() {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => {
+            Stmt::Expr(Expr::Block(ref block), _) => {
                 if let Some(section) = get_section(block) {
                     let context = context.append_section(section.clone());
 
@@ -317,7 +317,7 @@ pub fn scenario(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for statement in function.block.stmts {
         match statement {
-            Stmt::Expr(Expr::Block(ref block)) => match get_section(block) {
+            Stmt::Expr(Expr::Block(ref block), _) => match get_section(block) {
                 Some(section) => {
                     let context = context.append_section(section.clone());
 
